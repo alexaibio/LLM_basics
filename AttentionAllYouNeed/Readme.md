@@ -2,11 +2,8 @@
 Encoder-decoded architecture for language translation.
 Based on 2-language data train a foundational transformer on generative settings.
 
-
-
-## inspired by Umar Jamil 
+Шnspired by Umar Jamil 
 https://www.youtube.com/watch?v=ISNdQcPhsts
-
 https://github.com/hkproj/pytorch-transformer
 
 
@@ -14,9 +11,6 @@ https://github.com/hkproj/pytorch-transformer
 - d_model - embeddings size
 - h - number of head of attention
 
-# TODO
-- replicate with FastTransformers
-- replicate with FlashAttention
 
 # Train pipeline
 - get_ds(config) 
@@ -31,3 +25,7 @@ https://github.com/hkproj/pytorch-transformer
 # Main blocks
 - model.py - low level PyTorch implementation
 - model_short.py - high level PyTorch implementation (Encoder and decoder are built-in functions)
+
+# TBD
+- replicate with FastTransformers
+- replicate with FlashAttention
