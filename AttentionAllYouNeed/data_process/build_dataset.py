@@ -1,38 +1,39 @@
-from pathlib import Path
-from torch.utils.data import DataLoader, random_split
-from AttentionAllYouNeed.data_process.dataset import BilingualDataset
-
 # Huggingface datasets and tokenizers
 from datasets import load_dataset, load_dataset_builder
 from tokenizers import Tokenizer
 from tokenizers.models import WordLevel
-from tokenizers.trainers import WordLevelTrainer
 from tokenizers.pre_tokenizers import Whitespace
+from tokenizers.trainers import WordLevelTrainer
+from torch.utils.data import DataLoader, random_split
+
+from AttentionAllYouNeed.config import get_model_folder
+from AttentionAllYouNeed.data_process.dataset import BilingualDataset
 
 
-def _get_all_sentences(ds, lang):
-    '''
-    Get all sentences from out dataset
-    We need generator here, because...
-    '''
+def _reshaped_dataset_gen(ds, lang):
     for item in ds:
         yield item['translation'][lang]
 
 
 def _get_or_build_tokenizer(config, ds, lang):
+    """
+    Create a WordLevel tokenizer (word=ID) which turns text into a list of integer IDs.
+    Other HF tokenizers: BPE, WordPiece, Unigram
+    """
+    # saved next to the model weights: .../AttentionAllYouNeed/model_saved/tokenizer_{lang}.json
+    tokenizer_path = get_model_folder(config) / config['tokenizer_file'].format(lang)
 
-    # save tokenizer to this file
-    tokenizer_path = Path(config['tokenizer_file'].format(lang))
-
-    if not Path.exists(tokenizer_path):
-        # Most code taken from: https://huggingface.co/docs/tokenizers/quicktour
-        # we are using the simpliest tokenizer which split sentence by words
-        tokenizer = Tokenizer(WordLevel(unk_token="[UNK]")) # if tokenizer see a word not in vocabulary it substitutes it with UNK
-        tokenizer.pre_tokenizer = Whitespace()   # split sentence by white space
+    if not tokenizer_path.exists():
+        # the simplest tokenizer = lookup table from word to ID
+        tokenizer = Tokenizer(WordLevel(unk_token="[UNK]"))         # if tokenizer see a word not in vocabulary it substitutes it with UNK
+        tokenizer.pre_tokenizer = Whitespace()                      # split sentence by white space
 
         # [SOS] - start of sentence / [EOS] - end of sentence
         trainer = WordLevelTrainer(special_tokens=["[UNK]", "[PAD]", "[SOS]", "[EOS]"], min_frequency=2)
-        tokenizer.train_from_iterator(_get_all_sentences(ds, lang), trainer=trainer)
+
+        # The tokenizer splits every sentence, counts each word, drops
+        #   the rare ones, and assigns IDs in order of frequency, most common first.
+        tokenizer.train_from_iterator(_reshaped_dataset_gen(ds, lang), trainer=trainer)
         tokenizer.save(str(tokenizer_path))
     else:
         tokenizer = Tokenizer.from_file(str(tokenizer_path))
@@ -45,17 +46,9 @@ def get_ds(config):
     Returns:
     """
 
-    # Load the dataset description from HF (opus_books / en-ru)
-    ds_builder = load_dataset_builder(
-        path=f"{config['datasource']}",
-        name=f"{config['lang_src']}-{config['lang_tgt']}"
-    )
-    print("--------------- using datasets from Hugging Face:")
-    print(ds_builder.info.description)
-
-    # huggingface Datasets is a library for easily accessing and sharing datasets
+    # Load huggingface Datasets
     ds_raw = load_dataset(
-        path=f"{config['datasource']}", # opus_books
+        path=f"{config['datasource']}",                     # opus_books
         name=f"{config['lang_src']}-{config['lang_tgt']}",  # en-ru
         split='train'
     )

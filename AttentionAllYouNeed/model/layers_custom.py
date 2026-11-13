@@ -1,8 +1,9 @@
 # https://github.com/hkproj/pytorch-transformer/blob/main/model.py
 
+import math
+
 import torch
 import torch.nn as nn
-import math
 
 ################################################
 #### Building blocks

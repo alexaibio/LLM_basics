@@ -1,0 +1,21 @@
+[project]
+name = "llm-basics"
+version = "0.1.0"
+description = "Toy implementations of LLM architectures (Transformer, GPT, ...)"
+readme = "Readme.md"
+# Must match the conda base interpreter (p311_torch -> Python 3.11)
+requires-python = ">=3.11,<3.12"
+
+# One shared env for all projects in this repo.
+# Conda must provide: torch, torchmetrics, numpy
+dependencies = [
+    # AttentionAllYouNeed
+    "tqdm>=4.66",         # progress bars (also pulled in by datasets anyway)
+    "datasets>=3.0",      # HF datasets: load_dataset('opus_books', 'en-ru')
+    "tokenizers>=0.20",   # HF tokenizers: WordLevel tokenizer
+    "tensorboard>=2.17",  # backend for torch.utils.tensorboard.SummaryWriter
+]
+
+[tool.uv]
+# Collection of scripts, not an installable package
+package = false

@@ -1,5 +1,7 @@
 # project specific
-AttentionAllYouNeed/weights
+AttentionAllYouNeed/model_saved
+tokenizer_*.json
+
 
 
 # Byte-compiled / optimized / DLL files
