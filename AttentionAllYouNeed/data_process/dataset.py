@@ -1,31 +1,40 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
+from tokenizers import Tokenizer
 
 
 class BilingualDataset(Dataset):
     """
-    standard preprocessing pipeline for training a Transformer in sequence-to-sequence tasks like translation.
-        Build a custom PyTorch dataset.
-        - a set of encoder/decoder vector and a label vector
-        - takes a pair of parallel sentences (e.g., English → Russian),
-        tokenizes them, adds special tokens ([SOS], [EOS], [PAD]), and prepares three tensors for training:
-        - encoder_input → goes into the encoder (EN)
-        - decoder_input → goes into the decoder (shifted right). - (RU)
-        - label → the expected output tokens for training (shifted left relative to the decoder).
+    Turns one English–Russian text pair into the fixed-size tensors a Transformer trains on.
+    It does:
+        - create a fixed size training vectors with "seq_len": 350
+        - takes a pair of parallel sentences (e.g., English → Russian), tokenizes them, adds special tokens ([SOS], [EOS], [PAD])
+        - Labels are not given to the model directly as inputs. Instead, they are used in the loss function.
+        - Teacher Forcing: почему Label сдвинут вперед по отношению к Decoder? - чтобы предсказывать след слово
 
-                # shifting strategy:
-        # - Encoder uses [SOS] ... [EOS].
-        # - Decoder input uses [SOS] ...] (no EOS).
-        # - Labels use [...] [EOS].
+    Input
+      {'translation': {'en': 'Anna Karenina', 'ru': 'Анна Каренина'}}
+      Token IDs: Anna=69, Karenina=1179, Анна=73, Каренина=628. Specials: [PAD]=1, [SOS]=2, [EOS]=3.
 
-        It also builds masks to make attention work properly.
-        Labels:
-            - Labels are not given to the model directly as inputs.
-            - Instead, they are used in the loss function.
+    Output of ds[0]
+      encoder_input  [ 2,  69, 1179,  3,  1,  1]   [SOS] Anna Karenina [EOS] [PAD] [PAD] - исходное предложение (анг)
+      decoder_input  [ 2,  73,  628,  1,  1,  1]   [SOS] Анна Каренина [PAD] [PAD] [PAD] - только начало перевода (рус) - поэтому нет EOS
+      label          [73, 628,    3,  1,  1,  1]   Анна Каренина [EOS] [PAD] [PAD] [PAD] - нет SOS - ответ, с которым сравнивается предсказание
+      encoder_mask   (1, 1, 6)  [1, 1, 1, 1, 0, 0] - запрещает Encoder обращать внимание на PAD.
+      decoder_mask   (1, 6, 6)  - запрещает Decoder смотреть на PAD и будущие токены.
+      src_text, tgt_text        raw strings, used for printing and BLEU at validation
+
+    Special tokens
+     - SOS = 2, 	Начало предложения
+     - EOS = 3, 	Конец предложения
+     - PAD = 1, 	Заполнение пустых позиций
+
+
+
     """
 
-    def __init__(self, ds, tokenizer_src, tokenizer_tgt, src_lang, tgt_lang, seq_len):
+    def __init__(self, ds, tokenizer_src: Tokenizer, tokenizer_tgt: Tokenizer, src_lang, tgt_lang, seq_len):
         super().__init__()
         self.seq_len = seq_len
 
@@ -35,10 +44,9 @@ class BilingualDataset(Dataset):
         self.src_lang = src_lang
         self.tgt_lang = tgt_lang
 
-        # SOS - Start of Sentence (sometimes written as <s>) - signal to "begin generation".
-        self.sos_token = torch.tensor([tokenizer_tgt.token_to_id("[SOS]")], dtype=torch.int64)
-        self.eos_token = torch.tensor([tokenizer_tgt.token_to_id("[EOS]")], dtype=torch.int64)
-        self.pad_token = torch.tensor([tokenizer_tgt.token_to_id("[PAD]")], dtype=torch.int64)
+        self.sos_token = torch.tensor([tokenizer_tgt.token_to_id("[SOS]")], dtype=torch.int64)  # 2
+        self.eos_token = torch.tensor([tokenizer_tgt.token_to_id("[EOS]")], dtype=torch.int64)  # 3
+        self.pad_token = torch.tensor([tokenizer_tgt.token_to_id("[PAD]")], dtype=torch.int64)  # 1
 
     def __len__(self):
         return len(self.ds)
@@ -49,18 +57,16 @@ class BilingualDataset(Dataset):
         tgt_text = src_target_pair['translation'][self.tgt_lang]
 
         # Transform the text into tokens
-        enc_input_tokens = self.tokenizer_src.encode_fn(src_text).ids
-        dec_input_tokens = self.tokenizer_tgt.encode_fn(tgt_text).ids
+        enc_input_tokens = self.tokenizer_src.encode(src_text).ids
+        dec_input_tokens = self.tokenizer_tgt.encode(tgt_text).ids
 
-        # padding - filing by PAD all unused locations
-        # shifting strategy:
-        # - Encoder uses [SOS] ... [EOS].
-        # - Decoder input uses [SOS] ...] (no EOS).
-        # - Labels use [...] [EOS].
         # Add sos, eos and padding to each sentence
-        enc_num_padding_tokens = self.seq_len - len(enc_input_tokens) - 2  # sentence is surrounded with  <s> and </s>
-        # We will only add <s>, and </s> only on the label
-        dec_num_padding_tokens = self.seq_len - len(dec_input_tokens) - 1   # we will only add <s>
+        #   - <s> = [SOS], start of sentence
+        #   - </s> = [EOS], end of sentence
+        # The angle-bracket style looks like HTML tags (<s> opens, </s> closes) and comes from other tokenizers: fairseq, BART, RoBERTa, LLaMA and
+        #   SentencePiece models use those strings.
+        enc_num_padding_tokens = self.seq_len - len(enc_input_tokens) - 2
+        dec_num_padding_tokens = self.seq_len - len(dec_input_tokens) - 1
 
         # Make sure the number of padding tokens is not negative. If it is, the sentence is too long
         if enc_num_padding_tokens < 0 or dec_num_padding_tokens < 0:
@@ -110,7 +116,7 @@ class BilingualDataset(Dataset):
             "decoder_input": decoder_input,  # (seq_len)
             "encoder_mask": (encoder_input != self.pad_token).unsqueeze(0).unsqueeze(0).int(), # (1, 1, seq_len), Prevents attention from seeing [PAD] tokens.
             "decoder_mask": (decoder_input != self.pad_token).unsqueeze(0).int() & causal_mask(decoder_input.size(0)), # (1, seq_len) & (1, seq_len, seq_len),
-            "label": label,  # (seq_len)
+            "label": label,                 # (seq_len)
             "src_text": src_text,
             "tgt_text": tgt_text,
         }

@@ -65,13 +65,15 @@ def get_ds(config):
     # out of HGF DataSets create a complete input/output tensors and a label tensor with masks
     train_ds = BilingualDataset(
         train_ds_raw,
-        tokenizer_src, tokenizer_tgt,
+        tokenizer_src,
+        tokenizer_tgt,
         config['lang_src'], config['lang_tgt'], config['seq_len']
     )
 
     val_ds = BilingualDataset(
         val_ds_raw,
-        tokenizer_src, tokenizer_tgt,
+        tokenizer_src,
+        tokenizer_tgt,
         config['lang_src'], config['lang_tgt'], config['seq_len']
     )
 
