@@ -7,7 +7,12 @@ def get_config():
         "num_epochs": 30,  #20,
         "lr": 5**-4,
         "seq_len": 350,
-        "d_model": 512,
+        # Transformer hyperparameters (values from the paper's base model in comments)
+        "d_model": 512,     # embedding size                         (paper: 512)
+        "N": 1,             # number of encoder and of decoder blocks (paper: 6)
+        "h": 8,             # number of attention heads              (paper: 8)
+        "d_ff": 2048,       # hidden size of the feed-forward block  (paper: 2048)
+        "dropout": 0.1,     #                                        (paper: 0.1)
         "datasource": 'Helsinki-NLP/opus_books',  # HF now requires 'namespace/name'
         "lang_src": "en",
         "lang_tgt": "ru",

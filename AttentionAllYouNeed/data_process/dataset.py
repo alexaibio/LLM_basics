@@ -1,5 +1,4 @@
 import torch
-import torch.nn as nn
 from torch.utils.data import Dataset
 from tokenizers import Tokenizer
 
@@ -29,9 +28,6 @@ class BilingualDataset(Dataset):
      - SOS = 2, 	Начало предложения
      - EOS = 3, 	Конец предложения
      - PAD = 1, 	Заполнение пустых позиций
-
-
-
     """
 
     def __init__(self, ds, tokenizer_src: Tokenizer, tokenizer_tgt: Tokenizer, src_lang, tgt_lang, seq_len):
@@ -56,24 +52,17 @@ class BilingualDataset(Dataset):
         src_text = src_target_pair['translation'][self.src_lang]
         tgt_text = src_target_pair['translation'][self.tgt_lang]
 
-        # Transform the text into tokens
         enc_input_tokens = self.tokenizer_src.encode(src_text).ids
         dec_input_tokens = self.tokenizer_tgt.encode(tgt_text).ids
 
-        # Add sos, eos and padding to each sentence
-        #   - <s> = [SOS], start of sentence
-        #   - </s> = [EOS], end of sentence
-        # The angle-bracket style looks like HTML tags (<s> opens, </s> closes) and comes from other tokenizers: fairseq, BART, RoBERTa, LLaMA and
-        #   SentencePiece models use those strings.
-        enc_num_padding_tokens = self.seq_len - len(enc_input_tokens) - 2
-        dec_num_padding_tokens = self.seq_len - len(dec_input_tokens) - 1
+        enc_num_padding_tokens = self.seq_len - len(enc_input_tokens) - 2   # encoder adds [SOS] and [EOS] → 2 extra
+        dec_num_padding_tokens = self.seq_len - len(dec_input_tokens) - 1   # decoder adds only [SOS]  → 1 extra
 
-        # Make sure the number of padding tokens is not negative. If it is, the sentence is too long
+        # Make sure the number of padding tokens is not negative.
         if enc_num_padding_tokens < 0 or dec_num_padding_tokens < 0:
             raise ValueError("Sentence is too long")
 
-        # assemble input vector: Add <s> and </s> token, padding
-        # [SOS] w1 w2 ... wn [EOS] [PAD] [PAD] ...] (length = seq_len).
+        # assemble input vector: Add SOS and EOS token, padding: [SOS] w1 w2 ... wn [EOS] [PAD] [PAD] ...]
         encoder_input = torch.cat(
             [
                 self.sos_token,
@@ -84,8 +73,7 @@ class BilingualDataset(Dataset):
             dim=0,
         )
 
-        # Add only <s> token - why there is no eos?
-        # [SOS] w1 w2 ... wn [PAD] [PAD] ...]
+        # Add only <s> token: [SOS] w1 w2 ... wn [PAD] [PAD] ...]
         decoder_input = torch.cat(
             [
                 self.sos_token,
@@ -95,8 +83,7 @@ class BilingualDataset(Dataset):
             dim=0,
         )
 
-        # Add only </s> token
-        # [w1 w2 ... wn [EOS] [PAD] [PAD] ...]
+        # Add only </s> token: [w1 w2 ... wn [EOS] [PAD] [PAD] ...]
         label = torch.cat(
             [
                 torch.tensor(dec_input_tokens, dtype=torch.int64),
@@ -106,7 +93,6 @@ class BilingualDataset(Dataset):
             dim=0,
         )
 
-        # Double check the size of the tensors to make sure they are all seq_len long
         assert encoder_input.size(0) == self.seq_len
         assert decoder_input.size(0) == self.seq_len
         assert label.size(0) == self.seq_len
@@ -114,8 +100,12 @@ class BilingualDataset(Dataset):
         return {
             "encoder_input": encoder_input,  # (seq_len)
             "decoder_input": decoder_input,  # (seq_len)
-            "encoder_mask": (encoder_input != self.pad_token).unsqueeze(0).unsqueeze(0).int(), # (1, 1, seq_len), Prevents attention from seeing [PAD] tokens.
-            "decoder_mask": (decoder_input != self.pad_token).unsqueeze(0).int() & causal_mask(decoder_input.size(0)), # (1, seq_len) & (1, seq_len, seq_len),
+
+            # encoder_mask: padding only: (1, 1, seq_len),  [[[1, 1, 1, 1, 0, 0]]]
+            "encoder_mask": (encoder_input != self.pad_token).unsqueeze(0).unsqueeze(0).int(),
+
+            # decoder_mask: padding AND causal: (1, seq_len) & (1, seq_len, seq_len),
+            "decoder_mask": (decoder_input != self.pad_token).unsqueeze(0).int() & causal_mask(decoder_input.size(0)),
             "label": label,                 # (seq_len)
             "src_text": src_text,
             "tgt_text": tgt_text,

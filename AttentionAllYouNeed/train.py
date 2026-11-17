@@ -32,14 +32,6 @@ else:
 device = torch.device(device)
 
 
-def get_model(config, vocab_src_len, vocab_tgt_len):
-    '''
-    NOTE: if the mdel is too big for your GPU, you might reduce number of heads or number of layer
-    '''
-    model = build_transformer(vocab_src_len, vocab_tgt_len, config["seq_len"], config['seq_len'], d_model=config['d_model'])
-    return model
-
-
 def greedy_decode(model, source, source_mask, tokenizer_src, tokenizer_tgt, max_len, device):
     '''
     for inference we have to run encoder only once!
@@ -89,7 +81,7 @@ def train_model(config):
     get_model_folder(config).mkdir(parents=True, exist_ok=True)
 
     train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt = get_ds(config)
-    model = get_model(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)
+    model = build_transformer(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)
 
     # Tensorboard
     writer = SummaryWriter(config['experiment_name'])
@@ -249,11 +241,11 @@ if __name__ == '__main__':
     warnings.filterwarnings("ignore")
     config = get_config()
 
-    # check dataloaders
+    # transform text corpus into datasets with Encoder_input, decoder_input tensors
     train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt = get_ds(config)
 
     # visualize model
-    model = get_model(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)
+    model = build_transformer(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)
     vizualize_model_by_keys(model)
     print(model)
 

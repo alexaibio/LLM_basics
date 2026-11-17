@@ -1,16 +1,24 @@
 # https://github.com/hkproj/pytorch-transformer/blob/main/model.py
 
-from AttentionAllYouNeed.model.layers_custom import *
+import torch
+import torch.nn as nn
 
-
-
+from AttentionAllYouNeed.model.layers_custom import (
+    FeedForwardBlock,
+    InputEmbeddings,
+    LayerNormalization,
+    MultiHeadAttentionBlock,
+    PositionalEncoding,
+    ProjectionLayer,
+    ResidualConnection,
+)
 
 ###########################################################################
 ### ENCODER / DECODER
 ###########################################################################
 
 class EncoderBlock(nn.Module):
-    # features here is d_model - dimensionality of embeddings
+    # d_model - dimensionality of embeddings
     def __init__(self, features: int, self_attention_block: MultiHeadAttentionBlock, feed_forward_block: FeedForwardBlock, dropout: float) -> None:
         super().__init__()
         self.self_attention_block = self_attention_block
@@ -79,7 +87,7 @@ class Decoder(nn.Module):
 
 
 ###############################################
-## full TRANSFORMER
+## TRANSFORMER
 ###############################################
 
 class Transformer(nn.Module):
@@ -120,25 +128,25 @@ class Transformer(nn.Module):
 
 ##################################################################
 
-def build_transformer(
-        src_vocab_size: int, tgt_vocab_size: int,
-        src_seq_len: int, tgt_seq_len: int,
-        d_model: int = 512,
-        N: int = 1,  # 6 number of layers (btoh encoder and decoder?)
-        h: int = 8,  # number of heads in attention
-        dropout: float = 0.1,
-        d_ff: int = 2048  # hidden forward layer
-) -> Transformer:
+def build_transformer(config: dict, src_vocab_size: int, tgt_vocab_size: int) -> Transformer:
 
-    # Create the embedding layers
+    # Hyperparameters come from config.py; vocab sizes come from the trained tokenizers
+    src_seq_len = tgt_seq_len = config['seq_len']
+    d_model = config['d_model']   # embedding size
+    N = config['N']               # number of encoder blocks and of decoder blocks
+    h = config['h']               # number of attention heads
+    d_ff = config['d_ff']         # hidden size of the feed-forward block
+    dropout = config['dropout']
+
+    # 1 - Create the embedding layers
     src_embed = InputEmbeddings(d_model, src_vocab_size)
     tgt_embed = InputEmbeddings(d_model, tgt_vocab_size)
 
-    # Create the positional encoding layers
+    # 2 - Create the positional encoding layers
     src_pos = PositionalEncoding(d_model, src_seq_len, dropout)
     tgt_pos = PositionalEncoding(d_model, tgt_seq_len, dropout)
 
-    # Create the encoder blocks
+    # 3 - Create the encoder blocks
     encoder_blocks = []
     for _ in range(N):
         encoder_self_attention_block = MultiHeadAttentionBlock(d_model, h, dropout)
@@ -146,7 +154,7 @@ def build_transformer(
         encoder_block = EncoderBlock(d_model, encoder_self_attention_block, feed_forward_block, dropout)
         encoder_blocks.append(encoder_block)
 
-    # Create the decoder blocks
+    # 4 - Create the decoder blocks
     decoder_blocks = []
     for _ in range(N):
         decoder_self_attention_block = MultiHeadAttentionBlock(d_model, h, dropout)
@@ -156,14 +164,14 @@ def build_transformer(
                                      feed_forward_block, dropout)
         decoder_blocks.append(decoder_block)
 
-    # Create the encoder and decoder
+    # 5 - Create the encoder and decoder
     encoder = Encoder(d_model, nn.ModuleList(encoder_blocks))
     decoder = Decoder(d_model, nn.ModuleList(decoder_blocks))
 
-    # Create the projection layer
+    # 6 - Create the projection layer
     projection_layer = ProjectionLayer(d_model, tgt_vocab_size)
 
-    # Create the transformer
+    # FINAL: Create the transformer
     transformer = Transformer(encoder, decoder, src_embed, tgt_embed, src_pos, tgt_pos, projection_layer)
 
     # Initialize the parameters
