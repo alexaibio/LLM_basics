@@ -83,15 +83,13 @@ def train_model(config):
     train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt = get_ds(config)
     model = build_transformer(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)
 
-    # Tensorboard
-    writer = SummaryWriter(config['experiment_name'])
-
+    writer = SummaryWriter(config['experiment_name'])   # Tensorboard
     optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'], eps=1e-9)
 
-    # If the user specified a model to preload before training, load it
-    # code to be able to load checkpoint in case of training crash
     initial_epoch = 0
     global_step = 0
+
+    # load checkpoint if config['preload'] is specified
     preload = config['preload']
     model_filename = latest_weights_file_path(config) if preload == 'latest' else get_weights_file_path(config, preload) if preload else None
     if model_filename:
@@ -107,27 +105,25 @@ def train_model(config):
     # make PAD does not contribute to the loss
     loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer_src.token_to_id('[PAD]'), label_smoothing=0.1).to(device)
 
-    # TRAIN LOOP
+    ##### TRAIN LOOP
     for epoch in range(initial_epoch, config['num_epochs']):
         torch.cuda.empty_cache()
-        model.train()  # get model back to a training mode (it was switched to eval during validation)
+        model.train()               # set model back to a training mode
         batch_iterator = tqdm(train_dataloader, desc=f"Processing Epoch {epoch:02d}")
 
         for batch in batch_iterator:
-            encoder_input = batch['encoder_input'].to(device) # (b, seq_len)
-            decoder_input = batch['decoder_input'].to(device) # (B, seq_len)
-            encoder_mask = batch['encoder_mask'].to(device) # (B, 1, 1, seq_len)
-            decoder_mask = batch['decoder_mask'].to(device) # (B, 1, seq_len, seq_len)
+            encoder_input = batch['encoder_input'].to(device)       # (b, seq_len)
+            decoder_input = batch['decoder_input'].to(device)       # (B, seq_len)
+            encoder_mask = batch['encoder_mask'].to(device)         # (B, 1, 1, seq_len)
+            decoder_mask = batch['decoder_mask'].to(device)         # (B, 1, seq_len, seq_len)
 
-            # Run the tensors through the encoder, decoder and the projection layer
-            encoder_output = model.encode(encoder_input, encoder_mask) # (B, seq_len, d_model)
+            # FORWARD pass (manual): run the tensors through the encoder, decoder and the projection layer
+            encoder_output = model.encode(encoder_input, encoder_mask)              # (B, seq_len, d_model)
             decoder_output = model.decode(encoder_output, encoder_mask, decoder_input, decoder_mask) # (B, seq_len, d_model)
-            proj_output = model.project(decoder_output) # (B, seq_len, vocab_size)
+            proj_output = model.project(decoder_output)                             # (B, seq_len, vocab_size)
 
-            # Compare the output with the label
+            # Compute the loss
             label = batch['label'].to(device) # (B, seq_len)
-
-            # Compute the loss using a simple cross entropy
             loss = loss_fn(proj_output.view(-1, tokenizer_tgt.get_vocab_size()), label.view(-1))
             batch_iterator.set_postfix({"loss": f"{loss.item():6.3f}"})
 

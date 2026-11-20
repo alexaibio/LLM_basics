@@ -38,9 +38,9 @@ class EncoderBlock(nn.Module):
 
 
 class Encoder(nn.Module):
-    '''
+    """
     Features = number of dimensions of embeddings
-    '''
+    """
     def __init__(self, features: int, layers: nn.ModuleList) -> None:
         super().__init__()
         self.layers = layers
@@ -109,8 +109,8 @@ class Transformer(nn.Module):
         self.projection_layer = projection_layer
 
     def encode(self, src, src_mask):
-        # src - input text
-        # (batch, seq_len, d_model)
+        # src - input text: batch, seq_len, d_model)
+        # note: src_mask is apdding mask here, not causal, comes from ds
         src = self.src_embed(src)
         src = self.src_pos(src)
         return self.encoder(x=src, mask=src_mask)   # forward() method of encoder() is called here
@@ -122,7 +122,7 @@ class Transformer(nn.Module):
         return self.decoder(tgt, encoder_output, src_mask, tgt_mask)
 
     def project(self, x):
-        # (batch, seq_len, vocab_size)
+        # x: (batch, seq_len, vocab_size)
         return self.projection_layer(x)
 
 
@@ -165,13 +165,13 @@ def build_transformer(config: dict, src_vocab_size: int, tgt_vocab_size: int) ->
         decoder_blocks.append(decoder_block)
 
     # 5 - Create the encoder and decoder
-    encoder = Encoder(d_model, nn.ModuleList(encoder_blocks))
+    encoder = Encoder(d_model, nn.ModuleList(encoder_blocks))   # stores and registers encoder modules
     decoder = Decoder(d_model, nn.ModuleList(decoder_blocks))
 
     # 6 - Create the projection layer
     projection_layer = ProjectionLayer(d_model, tgt_vocab_size)
 
-    # FINAL: Create the transformer
+    ############ FINAL: Create the transformer
     transformer = Transformer(encoder, decoder, src_embed, tgt_embed, src_pos, tgt_pos, projection_layer)
 
     # Initialize the parameters

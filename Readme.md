@@ -16,6 +16,7 @@ Activate `source .venv/bin/activate` if you use it in terminal
 Implementation of famous 2017 articles, a Transformer Encoder-Decoder architechure for machine translation.
 
 Based on Umar Jamil video: https://www.youtube.com/watch?v=ISNdQcPhsts
+and github: https://github.com/hkproj/pytorch-transformer
 
 Run:
 ```bash
