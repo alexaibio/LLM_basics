@@ -33,12 +33,11 @@ device = torch.device(device)
 
 
 def greedy_decode(model, source, source_mask, tokenizer_src, tokenizer_tgt, max_len, device):
-    '''
-    for inference we have to run encoder only once!
-    for generation we:
-    - compute encoder once, then generate first tocken by decoder, then add it ro decored input etc
-    - generation stops when we reach eos or max_length
-    '''
+    """
+    for inference (generation) we have to run encoder only once!
+    - compute encoder once, then generate first token by decoder, then add it ro decoded input etc
+    - generation stops when we reach EOS or max_length
+    """
 
     sos_idx = tokenizer_tgt.token_to_id('[SOS]')
     eos_idx = tokenizer_tgt.token_to_id('[EOS]')
@@ -80,8 +79,12 @@ def train_model(config):
     # Make sure the weights folder exists
     get_model_folder(config).mkdir(parents=True, exist_ok=True)
 
+    # transform text corpus into datasets with Encoder_input, decoder_input tensors
     train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt = get_ds(config)
     model = build_transformer(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)
+
+    vizualize_model_by_keys(model)
+    print(model)
 
     writer = SummaryWriter(config['experiment_name'])   # Tensorboard
     optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'], eps=1e-9)
@@ -141,7 +144,7 @@ def train_model(config):
             global_step += 1
 
         # Run validation at the end of every epoch
-        run_validation(
+        _run_validation(
             model, val_dataloader, tokenizer_src, tokenizer_tgt, config['seq_len'], device,
             lambda msg: batch_iterator.write(msg), global_step, writer
         )
@@ -156,14 +159,10 @@ def train_model(config):
         }, model_filename)
 
 
-def run_validation(
+def _run_validation(
         model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, device,
         print_msg, global_step, writer, num_examples=2
 ):
-    '''
-    do the inference of num_examples=2 to see how it works
-    return input, output and expected output to print it into console
-    '''
     model.eval()
     count = 0
 
@@ -237,15 +236,6 @@ if __name__ == '__main__':
     warnings.filterwarnings("ignore")
     config = get_config()
 
-    # transform text corpus into datasets with Encoder_input, decoder_input tensors
-    train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt = get_ds(config)
-
-    # visualize model
-    model = build_transformer(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)
-    vizualize_model_by_keys(model)
-    print(model)
-
-    ######  train Model
     train_model(config)
 
     print()

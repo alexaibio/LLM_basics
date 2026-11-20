@@ -7,24 +7,26 @@ https://www.youtube.com/watch?v=ISNdQcPhsts
 https://github.com/hkproj/pytorch-transformer
 
 
-# Abbreviation
+## Variables
 - d_model - embeddings size
 - h - number of head of attention
 
 
-# Train pipeline
+## Main blocks
+- `data_process/` - build an appropriate dataset for training
+- `model/model.py` - low level PyTorch Transformer implementation
+
+
+## Dataset
 - get_ds(config) 
   - ds_raw = load_dataset (from haggingface.datasets) - ('opus_books', 'en-ru'), 17496x2
   - tokenizer_src = get_or_build_tokenizer, create tokenizer_en/ru.json
   - BilingualDataset
   - tokenizer_src.encode
   - return train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt
-- dfdfd
 
 
-# Main blocks
-- model.py - low level PyTorch implementation
-- model_short.py - high level PyTorch implementation (Encoder and decoder are built-in functions)
+
 
 # TBD
 - replicate with FastTransformers

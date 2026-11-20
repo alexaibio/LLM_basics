@@ -22,6 +22,7 @@ Run:
 ```bash
 cd AttentionAllYouNeed
 uv run python train.py
+uv run pyhton inference.py
 ```
 
 

@@ -42,11 +42,19 @@ def _get_or_build_tokenizer(config, ds, lang):
 
 def get_ds(config):
     """
-    prepare training and validation datasets and the corresponding tokenizers
-    Returns:
+    Form BilingualDataset training and validation with corresponding tokenizers
+
+    Output of ds[0]
+      encoder_input  [ 2,  69, 1179,  3,  1,  1]   [SOS] Anna Karenina [EOS] [PAD] [PAD] - исходное предложение (анг)
+      decoder_input  [ 2,  73,  628,  1,  1,  1]   [SOS] Анна Каренина [PAD] [PAD] [PAD] - только начало перевода (рус) - поэтому нет EOS
+      label          [73, 628,    3,  1,  1,  1]   Анна Каренина [EOS] [PAD] [PAD] [PAD] - нет SOS - ответ, с которым сравнивается предсказание
+      encoder_mask   (1, 1, 6)  [1, 1, 1, 1, 0, 0] - запрещает Encoder обращать внимание на PAD.
+      decoder_mask   (1, 6, 6)  - запрещает Decoder смотреть на PAD и будущие токены.
+      src_text, tgt_text        raw strings, used for printing and BLEU at validation
+
     """
 
-    # Load huggingface Datasets
+    # Load huggingface Datasets: {'en': 'Anna Karenina', 'ru': 'Анна Каренина'}
     ds_raw = load_dataset(
         path=f"{config['datasource']}",                     # opus_books
         name=f"{config['lang_src']}-{config['lang_tgt']}",  # en-ru
