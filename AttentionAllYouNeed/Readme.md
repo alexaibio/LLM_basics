@@ -2,9 +2,11 @@
 Encoder-decoded architecture for language translation.
 Based on 2-language data train a foundational transformer on generative settings.
 
-Шnspired by Umar Jamil 
-https://www.youtube.com/watch?v=ISNdQcPhsts
-https://github.com/hkproj/pytorch-transformer
+References: 
+- https://www.youtube.com/watch?v=ISNdQcPhsts
+- https://github.com/hkproj/pytorch-transformer
+- Vaswani etal, 2017. Attention is all you need. Advances in Neural Information Processing Systems, 30, 5998–6008.
+- https://nlp.seas.harvard.edu/2018/04/03/attention.html
 
 
 ## Variables
@@ -26,6 +28,9 @@ https://github.com/hkproj/pytorch-transformer
   - return train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt
 
 
+## Layers and building blocks
+`InputEmbeddings`
+- 
 
 
 # TBD

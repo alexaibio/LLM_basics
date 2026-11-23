@@ -3,7 +3,7 @@
 import torch
 import torch.nn as nn
 
-from AttentionAllYouNeed.model.layers_custom import (
+from AttentionAllYouNeed.model.layers import (
     FeedForwardBlock,
     InputEmbeddings,
     LayerNormalization,

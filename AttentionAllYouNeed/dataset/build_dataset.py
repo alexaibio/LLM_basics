@@ -7,7 +7,7 @@ from tokenizers.trainers import WordLevelTrainer
 from torch.utils.data import DataLoader, random_split
 
 from AttentionAllYouNeed.config import get_model_folder
-from AttentionAllYouNeed.data_process.dataset import BilingualDataset
+from AttentionAllYouNeed.dataset.dataset import BilingualDataset
 
 
 def _reshaped_dataset_gen(ds, lang):

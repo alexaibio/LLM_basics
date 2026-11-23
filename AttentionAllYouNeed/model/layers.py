@@ -17,7 +17,6 @@ class InputEmbeddings(nn.Module):
         self.vocab_size = vocab_size
         # it does not calculate embeddings, it is just a random initialized placeholder
         # embeddings will be learnt during the training
-        # after training, you can expect to have embeddings that are specific to your task rather than generic embeddings
         self.embedding = nn.Embedding(vocab_size, d_model)
 
     def forward(self, x):

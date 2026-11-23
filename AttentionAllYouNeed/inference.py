@@ -5,7 +5,7 @@ from datasets import load_dataset
 from tokenizers import Tokenizer
 
 from config import get_config, get_model_folder, latest_weights_file_path
-from data_process.dataset import BilingualDataset, causal_mask
+from dataset.dataset import BilingualDataset, causal_mask
 from model.model import build_transformer
 
 

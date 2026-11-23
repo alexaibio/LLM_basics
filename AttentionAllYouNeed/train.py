@@ -9,8 +9,8 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from config import get_config, get_model_folder, get_weights_file_path, latest_weights_file_path
-from data_process.build_dataset import get_ds
-from data_process.dataset import causal_mask
+from dataset.build_dataset import get_ds
+from dataset.dataset import causal_mask
 from model.model import build_transformer
 from utils import vizualize_model_by_keys
 
