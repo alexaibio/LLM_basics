@@ -1,4 +1,12 @@
-# 'Attention is all you need' replication
+# Three options to implement transformer
+- a completelly manual, `a_model_manual`
+- with PyTorch primitives, `b_model_pytorch`
+- with Hagging Face Library `c_model_hf`
+
+Also, lets investigate how the model is loaded to HF transformer
+
+
+# Option A: 'Attention is all you need' manual replication
 Encoder-decoded architecture for language translation.
 Based on 2-language data train a foundational transformer on generative settings.
 
@@ -120,8 +128,4 @@ Encoder: Run N  EncoderBlocks with residial connections
      trains worse without it
 
 
-
-
-# TBD
-- replicate with FastTransformers (not manually)
-- replicate with FlashAttention
+     

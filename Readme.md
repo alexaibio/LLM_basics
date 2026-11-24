@@ -21,8 +21,8 @@ and github: https://github.com/hkproj/pytorch-transformer
 Run:
 ```bash
 cd AttentionAllYouNeed
-uv run python train.py
-uv run pyhton inference.py
+uv run python train_manual.py
+uv run pyhton inference_manual.py
 ```
 
 
