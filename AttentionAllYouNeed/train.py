@@ -11,7 +11,7 @@ from tqdm import tqdm
 from config import get_config, get_model_folder, get_weights_file_path, latest_weights_file_path
 from dataset.build_dataset import get_ds
 from dataset.dataset import causal_mask
-from model.model import build_transformer
+from a_model_manual.model import build_transformer
 from utils import vizualize_model_by_keys
 
 
@@ -96,14 +96,14 @@ def train_model(config):
     preload = config['preload']
     model_filename = latest_weights_file_path(config) if preload == 'latest' else get_weights_file_path(config, preload) if preload else None
     if model_filename:
-        print(f'Preloading model {model_filename}')
+        print(f'Preloading a_model_manual {model_filename}')
         state = torch.load(model_filename)
         model.load_state_dict(state['model_state_dict'])
         initial_epoch = state['epoch'] + 1
         optimizer.load_state_dict(state['optimizer_state_dict'])
         global_step = state['global_step']
     else:
-        print('No model to preload, starting from scratch')
+        print('No a_model_manual to preload, starting from scratch')
 
     # make PAD does not contribute to the loss
     loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer_src.token_to_id('[PAD]'), label_smoothing=0.1).to(device)
@@ -111,7 +111,7 @@ def train_model(config):
     ##### TRAIN LOOP
     for epoch in range(initial_epoch, config['num_epochs']):
         torch.cuda.empty_cache()
-        model.train()               # set model back to a training mode
+        model.train()               # set a_model_manual back to a training mode
         batch_iterator = tqdm(train_dataloader, desc=f"Processing Epoch {epoch:02d}")
 
         for batch in batch_iterator:
@@ -149,7 +149,7 @@ def train_model(config):
             lambda msg: batch_iterator.write(msg), global_step, writer
         )
 
-        # Save the model at the end of every epoch
+        # Save the a_model_manual at the end of every epoch
         model_filename = get_weights_file_path(config, f"{epoch:02d}_{loss.item():5.2f}")
         torch.save({
             'epoch': epoch,
@@ -198,7 +198,7 @@ def _run_validation(
             expected.append(target_text)
             predicted.append(model_out_text)
 
-            # Print the source, target and model output
+            # Print the source, target and a_model_manual output
             # we use print_msg because during tqdm is not recomended to use print
             # instead write into batch_iterator = tqdm(train_dataloader, desc=f"Processing Epoch {epoch:02d}")
             print_msg('-' * console_width)

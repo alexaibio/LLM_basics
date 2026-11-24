@@ -20,7 +20,7 @@ def _get_or_build_tokenizer(config, ds, lang):
     Create a WordLevel tokenizer (word=ID) which turns text into a list of integer IDs.
     Other HF tokenizers: BPE, WordPiece, Unigram
     """
-    # saved next to the model weights: .../AttentionAllYouNeed/model_saved/tokenizer_{lang}.json
+    # saved next to the a_model_manual weights: .../AttentionAllYouNeed/model_saved/tokenizer_{lang}.json
     tokenizer_path = get_model_folder(config) / config['tokenizer_file'].format(lang)
 
     if not tokenizer_path.exists():

@@ -9,7 +9,7 @@ class BilingualDataset(Dataset):
     It does:
         - create a fixed size training vectors with "seq_len": 350
         - takes a pair of parallel sentences (e.g., English → Russian), tokenizes them, adds special tokens ([SOS], [EOS], [PAD])
-        - Labels are not given to the model directly as inputs. Instead, they are used in the loss function.
+        - Labels are not given to the a_model_manual directly as inputs. Instead, they are used in the loss function.
         - Teacher Forcing: почему Label сдвинут вперед по отношению к Decoder? - чтобы предсказывать след слово
 
     Input

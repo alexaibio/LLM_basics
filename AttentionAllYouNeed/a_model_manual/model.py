@@ -3,10 +3,10 @@
 import torch
 import torch.nn as nn
 
-from AttentionAllYouNeed.model.layers import (
+from AttentionAllYouNeed.a_model_manual.layers import (
     FeedForwardBlock,
     InputEmbeddings,
-    LayerNormalization,
+    NormalizationLayer,
     MultiHeadAttentionBlock,
     PositionalEncoding,
     ProjectionLayer,
@@ -18,39 +18,53 @@ from AttentionAllYouNeed.model.layers import (
 ###########################################################################
 
 class EncoderBlock(nn.Module):
-    # d_model - dimensionality of embeddings
+    """
+    One block has two sub-layers, each wrapped in a ResidualConnection
+    - d_model - dimensionality of embeddings
+    x (B, S, 512)
+   │
+   ├─► Norm ─► Self-Attention(q=k=v=x, mask) ─► Dropout ─┐
+   └──────────────────────────────────────────────── + ◄─┘   residual_connections[0]
+   │
+   ├─► Norm ─► FeedForward ─► Dropout ──────────────┐
+   └──────────────────────────────────────────── + ◄┘       residual_connections[1]
+   │
+    x (B, S, 512)  ← same shape, enriched with context
+    """
     def __init__(self, features: int, self_attention_block: MultiHeadAttentionBlock, feed_forward_block: FeedForwardBlock, dropout: float) -> None:
         super().__init__()
-        self.self_attention_block = self_attention_block
-        self.feed_forward_block = feed_forward_block
-        # here is two residual connections
+        self.self_attention_block: MultiHeadAttentionBlock = self_attention_block
+        self.feed_forward_block: FeedForwardBlock = feed_forward_block
+        # An encoder block has two sub-layers, and each one gets its own residual connection:
+        #   residual_connections[0]  →  wraps self-attention
+        #   residual_connections[1]  →  wraps feed-forward
         self.residual_connections = nn.ModuleList([ResidualConnection(features, dropout) for _ in range(2)])
 
     def forward(self, x, src_mask):
-        '''
-        In PyTorch, the forward method is automatically called when you invoke an instance of a nn.Module.
-        '''
-        # By using a lambda function, you can defer the evaluation until the lambda function is called within self.residual_connections[0]
-        # This can be beneficial if you want to control when the computation is performed.
+        # Form the whole encoder block:
+        #   - attention_block wrapped in a residial conection
+        #   - FF block, wrapped in residial
+        #   - why lambda - ResidualConnection calls sublayer(self.norm(x)) with one argument, but attention needs four (q, k, v, mask)
         x = self.residual_connections[0](x, lambda x: self.self_attention_block(q=x, k=x, v=x, mask=src_mask))
         x = self.residual_connections[1](x, self.feed_forward_block)
+
         return x
 
 
 class Encoder(nn.Module):
     """
+    Run N  EncoderBlocks
     Features = number of dimensions of embeddings
     """
     def __init__(self, features: int, layers: nn.ModuleList) -> None:
         super().__init__()
         self.layers = layers
-        self.norm = LayerNormalization(features)
+        self.norm = NormalizationLayer(features)
 
     def forward(self, x, mask):
         for layer in self.layers:
             x = layer(x, mask)
-        # Q: why do we need one more Normalization? we already have on at the and of each block...
-        return self.norm(x)
+        return self.norm(x)         # Note: Transformers use pre-norm plus one final norm.
 
 
 class DecoderBlock(nn.Module):
@@ -77,7 +91,7 @@ class Decoder(nn.Module):
         '''
         super().__init__()
         self.layers = layers
-        self.norm = LayerNormalization(features)
+        self.norm = NormalizationLayer(features)
 
     def forward(self, x, encoder_output, src_mask, tgt_mask):
         for layer in self.layers:
@@ -87,14 +101,14 @@ class Decoder(nn.Module):
 
 
 ###############################################
-## TRANSFORMER
+## Full TRANSFORMER
 ###############################################
 
 class Transformer(nn.Module):
-    '''
+    """
     src_embedding - for input language
     tgt_embedding - for the target language
-    '''
+    """
     def __init__(self,
                  encoder: Encoder, decoder: Decoder, src_embed: InputEmbeddings, tgt_embed: InputEmbeddings,
                  src_pos: PositionalEncoding, tgt_pos: PositionalEncoding, projection_layer: ProjectionLayer
@@ -124,6 +138,8 @@ class Transformer(nn.Module):
     def project(self, x):
         # x: (batch, seq_len, vocab_size)
         return self.projection_layer(x)
+
+
 
 
 ##################################################################

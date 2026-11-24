@@ -6,16 +6,16 @@ from tokenizers import Tokenizer
 
 from config import get_config, get_model_folder, latest_weights_file_path
 from dataset.dataset import BilingualDataset, causal_mask
-from model.model import build_transformer
+from a_model_manual.model import build_transformer
 
 
 def translate(sentence: str):
-    # Define the device, tokenizers, and model
+    # Define the device, tokenizers, and a_model_manual
     device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
     print("Using device:", device)
     config = get_config()
 
-    # tokenizers are saved next to the model weights: .../AttentionAllYouNeed/model_saved/tokenizer_{lang}.json
+    # tokenizers are saved next to the a_model_manual weights: .../AttentionAllYouNeed/model_saved/tokenizer_{lang}.json
     tokenizer_src = Tokenizer.from_file(str(get_model_folder(config) / config['tokenizer_file'].format(config['lang_src'])))
     tokenizer_tgt = Tokenizer.from_file(str(get_model_folder(config) / config['tokenizer_file'].format(config['lang_tgt'])))
     model = build_transformer(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)

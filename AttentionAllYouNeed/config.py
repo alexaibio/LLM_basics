@@ -7,7 +7,7 @@ def get_config():
         "num_epochs": 30,  #20,
         "lr": 5**-4,
         "seq_len": 350,
-        # Transformer hyperparameters (values from the paper's base model in comments)
+        # Transformer hyperparameters (values from the paper's base a_model_manual in comments)
         "d_model": 512,     # embedding size                         (paper: 512)
         "N": 1,             # number of encoder and of decoder blocks (paper: 6)
         "h": 8,             # number of attention heads              (paper: 8)
@@ -16,7 +16,7 @@ def get_config():
         "datasource": 'Helsinki-NLP/opus_books',  # HF now requires 'namespace/name'
         "lang_src": "en",
         "lang_tgt": "ru",
-        "model_folder": "model_saved",   # model weights + tokenizers
+        "model_folder": "model_saved",   # a_model_manual weights + tokenizers
         "model_basename": "transl_model_",
         "preload": "latest",
         "tokenizer_file": "tokenizer_{0}.json",
