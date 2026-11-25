@@ -2,20 +2,22 @@ from typing import Optional, Tuple
 import torch
 import torch.nn as nn
 
-class SiglipVisionConfig:
 
+############## Visual Encoder Configuration
+# Why it is so strange? why not just class attributes? data class? What super() does?
+class SiglipVisionConfig:
     def __init__(
         self,
-        hidden_size=768,
-        intermediate_size=3072,
+        hidden_size=768,            # Embedding dim
+        intermediate_size=3072,     # FF layer size
         num_hidden_layers=12,
         num_attention_heads=12,
-        num_channels=3,
+        num_channels=3,             # RGB
         image_size=224,
-        patch_size=16,
+        patch_size=16,              # split image in 16 pieces
         layer_norm_eps=1e-6,
         attention_dropout=0.0,
-        num_image_tokens: int = None,
+        num_image_tokens: int = None,   # ???
         **kwargs
     ):
         super().__init__()
@@ -40,12 +42,13 @@ class SiglipVisionEmbeddings(nn.Module):
         self.image_size = config.image_size
         self.patch_size = config.patch_size
 
+        # define Convolution
         self.patch_embedding = nn.Conv2d(
-            in_channels=config.num_channels,
+            in_channels=config.num_channels,    # RGB
             out_channels=self.embed_dim,
-            kernel_size=self.patch_size,
-            stride=self.patch_size,
-            padding="valid", # This indicates no padding is added
+            kernel_size=self.patch_size,        # filter
+            stride=self.patch_size,             # no overlapping
+            padding="valid",                    # Valid = no padding
         )
 
         self.num_patches = (self.image_size // self.patch_size) ** 2
@@ -222,12 +225,13 @@ class SiglipVisionTransformer(nn.Module):
         self.config = config
         embed_dim = config.hidden_size
 
-        self.embeddings = SiglipVisionEmbeddings(config)
+        self.embeddings = SiglipVisionEmbeddings(config)        # extract patches
         self.encoder = SiglipEncoder(config)
         self.post_layernorm = nn.LayerNorm(embed_dim, eps=config.layer_norm_eps)
 
     def forward(self, pixel_values: torch.Tensor) -> torch.Tensor:
-        # pixel_values: [Batch_Size, Channels, Height, Width] -> [Batch_Size, Num_Patches, Embed_Dim]
+        # pixel_values: [Batch_Size, Channels, Height, Width]
+        # output: [Batch_Size, Num_Patches, Embed_Dim]
         hidden_states = self.embeddings(pixel_values)
 
         last_hidden_state = self.encoder(inputs_embeds=hidden_states)
@@ -245,5 +249,6 @@ class SiglipVisionModel(nn.Module):
         self.vision_model = SiglipVisionTransformer(config)
 
     def forward(self, pixel_values) -> Tuple:
-        # [Batch_Size, Channels, Height, Width] -> [Batch_Size, Num_Patches, Embed_Dim]
+        # pixel_values: [Batch_Size, Channels, Height, Width] ->
+        # output: [Batch_Size, Num_Patches, Embed_Dim]
         return self.vision_model(pixel_values=pixel_values) 
