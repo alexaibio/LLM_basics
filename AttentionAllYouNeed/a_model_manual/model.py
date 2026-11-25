@@ -53,7 +53,7 @@ class EncoderBlock(nn.Module):
 
 class Encoder(nn.Module):
     """
-    Run N  EncoderBlocks
+    Run N EncoderBlocks
     Features = number of dimensions of embeddings
     """
     def __init__(self, features: int, layers: nn.ModuleList) -> None:
@@ -108,6 +108,10 @@ class Transformer(nn.Module):
     """
     src_embedding - for input language
     tgt_embedding - for the target language
+
+    We use separate encode and decode methods here (instead of forward) because we need Transformer in two modes
+     - train (every time run both encoder and decoder)
+     - inference (run encoder once, then only decoder)
     """
     def __init__(self,
                  encoder: Encoder, decoder: Decoder, src_embed: InputEmbeddings, tgt_embed: InputEmbeddings,
@@ -124,7 +128,7 @@ class Transformer(nn.Module):
 
     def encode(self, src, src_mask):
         # src - input text: batch, seq_len, d_model)
-        # note: src_mask is apdding mask here, not causal, comes from ds
+        # note: src_mask is not a causal mask, but padding mask, it comes from ds
         src = self.src_embed(src)
         src = self.src_pos(src)
         return self.encoder(x=src, mask=src_mask)   # forward() method of encoder() is called here
