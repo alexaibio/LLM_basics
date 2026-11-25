@@ -3,7 +3,7 @@ import torch
 from AttentionAllYouNeed.a_model_manual.masks import causal_mask
 
 
-def greedy_decode(model, source, source_mask, tokenizer_src, tokenizer_tgt, max_len, device):
+def greedy_decode(model, source, source_mask, tokenizer_src, tokenizer_tgt, max_len, device, verbose=False):
     """
     Greedy decoding - simplest text generation, the next token is the one with highest probability
         - Encoder сначала обрабатывает всё входное предложение и формирует его представление.
@@ -43,6 +43,10 @@ def greedy_decode(model, source, source_mask, tokenizer_src, tokenizer_tgt, max_
             [decoder_input, torch.empty(1, 1).type_as(source).fill_(next_word.item()).to(device)],
             dim=1
         )
+
+        # print each word as it is generated (demo); off during validation
+        if verbose:
+            print(tokenizer_tgt.decode([next_word.item()]), end=' ')
 
         if next_word == eos_idx:
             break

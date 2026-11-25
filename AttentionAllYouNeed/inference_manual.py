@@ -6,13 +6,15 @@ from tokenizers import Tokenizer
 
 from AttentionAllYouNeed.config import get_config, get_model_folder, latest_weights_file_path
 from AttentionAllYouNeed.dataset.dataset import BilingualDataset
-from AttentionAllYouNeed.a_model_manual.masks import causal_mask, padding_mask
+from AttentionAllYouNeed.a_model_manual.masks import padding_mask
 from AttentionAllYouNeed.a_model_manual.model import build_transformer
+from AttentionAllYouNeed.a_model_manual.decode import greedy_decode
 
 
 def translate(sentence: str):
     """
-    Decoding loop
+    Decoding loop:
+     encode once, then repeat: causal mask, then decode, then argmax, then append, until [EOS] or seq_len
     """
     config = get_config()
     device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
@@ -53,37 +55,18 @@ def translate(sentence: str):
         ], dim=0).to(device)
         source_mask = padding_mask(source, tokenizer_src.token_to_id('[PAD]'))   # (1, 1, seq_len)
         source = source.unsqueeze(0)        # add batch dimension: (seq_len) -> (1, seq_len)
-        encoder_output = model.encode(source, source_mask)      # remember, we have to method, encode and decode
-
-        # Initialize the decoder input with the SOS token
-        decoder_input = torch.empty(1, 1).fill_(tokenizer_tgt.token_to_id('[SOS]')).type_as(source).to(device)
 
         # Print the source sentence and target start prompt
-        if label != "": print(f"{f'ID: ':>12}{id}") 
+        if label != "": print(f"{f'ID: ':>12}{id}")
         print(f"{f'SOURCE: ':>12}{sentence}")
-        if label != "": print(f"{f'TARGET: ':>12}{label}") 
+        if label != "": print(f"{f'TARGET: ':>12}{label}")
         print(f"{f'PREDICTED: ':>12}", end='')
 
-        # Generate the translation word by word
-        while decoder_input.size(1) < seq_len:
-            # build mask for target and calculate output
-            decoder_mask = causal_mask(decoder_input.size(1)).type_as(source_mask).to(device)   # 1 = allowed (past and self)
-            out = model.decode(encoder_output, source_mask, decoder_input, decoder_mask)
-
-            # project next token
-            prob = model.project(out[:, -1])
-            _, next_word = torch.max(prob, dim=1)
-            decoder_input = torch.cat([decoder_input, torch.empty(1, 1).type_as(source).fill_(next_word.item()).to(device)], dim=1)
-
-            # print the translated word
-            print(f"{tokenizer_tgt.decode([next_word.item()])}", end=' ')
-
-            # break if we predict the end of sentence token
-            if next_word == tokenizer_tgt.token_to_id('[EOS]'):
-                break
+        # Generate the translation word by word (verbose=True prints each word as it is generated)
+        model_out = greedy_decode(model, source, source_mask, tokenizer_src, tokenizer_tgt, seq_len, device, verbose=True)
 
     # convert ids to tokens
-    return tokenizer_tgt.decode(decoder_input[0].tolist())
+    return tokenizer_tgt.decode(model_out.tolist())
 
 
 if __name__ == "__main__":
