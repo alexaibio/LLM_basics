@@ -4,16 +4,19 @@ import torch
 from datasets import load_dataset
 from tokenizers import Tokenizer
 
-from config import get_config, get_model_folder, latest_weights_file_path
-from dataset.dataset import BilingualDataset, causal_mask
-from a_model_manual.model import build_transformer
+from AttentionAllYouNeed.config import get_config, get_model_folder, latest_weights_file_path
+from AttentionAllYouNeed.dataset.dataset import BilingualDataset
+from AttentionAllYouNeed.a_model_manual.masks import causal_mask, padding_mask
+from AttentionAllYouNeed.a_model_manual.model import build_transformer
 
 
 def translate(sentence: str):
-    # Define the device, tokenizers, and a_model_manual
-    device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
-    print("Using device:", device)
+    """
+    Decoding loop
+    """
     config = get_config()
+    device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
+    print(">>> Translate using device:", device)
 
     # tokenizers are saved next to the a_model_manual weights: .../AttentionAllYouNeed/model_saved/tokenizer_{lang}.json
     tokenizer_src = Tokenizer.from_file(str(get_model_folder(config) / config['tokenizer_file'].format(config['lang_src'])))
@@ -27,7 +30,7 @@ def translate(sentence: str):
     state = torch.load(model_filename, map_location=device)   # map_location: a checkpoint saved on CUDA also loads on MPS/CPU
     model.load_state_dict(state['model_state_dict'])
 
-    # if the sentence is a number use it as an index to the test set
+    # instead writing the sentence you can use it by number from the dataset.
     label = ""
     if type(sentence) == int or sentence.isdigit():
         id = int(sentence)
@@ -40,7 +43,7 @@ def translate(sentence: str):
     # translate the sentence
     model.eval()
     with torch.no_grad():
-        # Precompute the encoder output and reuse it for every generation step
+        # Precompute the encoder output once and reuse it for every generation step
         source = tokenizer_src.encode(sentence)
         source = torch.cat([
             torch.tensor([tokenizer_src.token_to_id('[SOS]')], dtype=torch.int64), 
@@ -48,11 +51,11 @@ def translate(sentence: str):
             torch.tensor([tokenizer_src.token_to_id('[EOS]')], dtype=torch.int64),
             torch.tensor([tokenizer_src.token_to_id('[PAD]')] * (seq_len - len(source.ids) - 2), dtype=torch.int64)
         ], dim=0).to(device)
-        source_mask = (source != tokenizer_src.token_to_id('[PAD]')).unsqueeze(0).unsqueeze(0).int().to(device)   # (1, 1, seq_len)
-        source = source.unsqueeze(0)   # add batch dimension: (seq_len) -> (1, seq_len)
-        encoder_output = model.encode(source, source_mask)
+        source_mask = padding_mask(source, tokenizer_src.token_to_id('[PAD]'))   # (1, 1, seq_len)
+        source = source.unsqueeze(0)        # add batch dimension: (seq_len) -> (1, seq_len)
+        encoder_output = model.encode(source, source_mask)      # remember, we have to method, encode and decode
 
-        # Initialize the decoder input with the sos token
+        # Initialize the decoder input with the SOS token
         decoder_input = torch.empty(1, 1).fill_(tokenizer_tgt.token_to_id('[SOS]')).type_as(source).to(device)
 
         # Print the source sentence and target start prompt

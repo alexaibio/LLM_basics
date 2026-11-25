@@ -5,11 +5,11 @@ def get_config():
     return {
         "batch_size": 20,
         "num_epochs": 30,  #20,
-        "lr": 5**-4,
+        "lr": 5e-4,
         "seq_len": 350,
         # Transformer hyperparameters (values from the paper's base a_model_manual in comments)
         "d_model": 512,     # embedding size                         (paper: 512)
-        "N": 1,             # number of encoder and of decoder blocks (paper: 6)
+        "N": 2,             # number of encoder and of decoder blocks (paper: 6)
         "h": 8,             # number of attention heads              (paper: 8)
         "d_ff": 2048,       # hidden size of the feed-forward block  (paper: 2048)
         "dropout": 0.1,     #                                        (paper: 0.1)

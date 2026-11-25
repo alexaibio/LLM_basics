@@ -12,10 +12,10 @@ import torchmetrics
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from b_model_pytorch.model import build_transformer
-from config import get_config, get_model_folder, get_weights_file_path, latest_weights_file_path
-from dataset.build_dataset import get_ds
-from utils import vizualize_model_by_keys
+from AttentionAllYouNeed.b_model_pytorch.model import build_transformer
+from AttentionAllYouNeed.config import get_config, get_model_folder, get_weights_file_path, latest_weights_file_path
+from AttentionAllYouNeed.dataset.build_dataset import get_ds
+from AttentionAllYouNeed.utils import vizualize_model_by_keys
 
 
 # Define the device
@@ -179,8 +179,6 @@ def _run_validation(
         for batch in validation_ds:
             count += 1
             encoder_input = batch["encoder_input"].to(device)   # (1, seq_len)
-
-            # check that the batch size is 1 (it should be always 1 for validation ds)
             assert encoder_input.size(0) == 1, "Batch size must be 1 for validation"
 
             model_out = greedy_decode(model, encoder_input, padding_mask(encoder_input, src_pad_idx), tokenizer_tgt, max_len, device)
@@ -193,7 +191,6 @@ def _run_validation(
             expected.append(target_text)
             predicted.append(model_out_text)
 
-            # Print the source, target and model output
             # print_msg = tqdm's write(): print() would break the progress bar
             print_msg('-' * console_width)
             print_msg(f"{'SOURCE: ':>12}{source_text}")
@@ -205,11 +202,11 @@ def _run_validation(
                 break
 
     if writer:
-        # Compute the char error rate
+        # Compute the Char Error Rate
         cer = torchmetrics.CharErrorRate()(predicted, expected)
         writer.add_scalar('validation cer', cer, global_step)
 
-        # Compute the word error rate
+        # Compute the Word Error Rate
         wer = torchmetrics.WordErrorRate()(predicted, expected)
         writer.add_scalar('validation wer', wer, global_step)
 

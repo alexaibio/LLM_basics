@@ -1,5 +1,5 @@
 # Three options to implement transformer
-- a completelly manual, `a_model_manual`
+- a completely manual, `a_model_manual`
 - with PyTorch primitives, `b_model_pytorch`
 - with Hagging Face Library `c_model_hf`
 
@@ -104,13 +104,13 @@ logits are used everywhere:
 
 ### `EncoderBlock` and `Encoder` 
 
-EncoderBlock: One block equals two sublayers (self-attention+Feed Forward), each wrapped in a ResidualConnection
+- EncoderBlock: One block equals two sublayers (self-attention+Feed Forward), each wrapped in a ResidualConnection
+- Encoder: Run N  EncoderBlocks with residial connections
 
-Encoder: Run N  EncoderBlocks with residial connections
 
 
 ### `DecoderBlock` and `Decoder`
-
+TBD
 
 ### Finally: `Transformer` and `build_transformer`
  Transformer doesn't build anything itself. Its __init__ only stores parts that have already been built.
@@ -128,4 +128,25 @@ Encoder: Run N  EncoderBlocks with residial connections
      trains worse without it
 
 
+## Training
+`uv run python AttentionAllYouNeed/train_manual.py`
+
+Metrics:
+ - BLEU: it measures translation quality the way people judge it.
+ - validation loos: prevent overfitting
+
+
+
+## Inference
+The general way to translate (decode) is as follows
+ - Encoder - run once and build an internal representation of an input sentence
+ - Decoder - run many times (always uses output from encoder), generate next token based on previous till the EOS.
+   - Masked Self-Attention — смотрит на уже сгенерированные токены, не заглядывая в будущее.
+   - Cross-Attention — обращается к выходу Encoder, чтобы учитывать исходное предложение.
+   - NOTE: no KV cache here, на каждом шаге Decoder может заново обрабатывать всю предыдущую последовательность
+
+
+Decoding can be done in several ways
+ - `greedy_decode.py` - a simplest way when next token is just a token with highers probability
+ - `beam_search.py` - a more complicated method
      

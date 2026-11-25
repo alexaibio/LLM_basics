@@ -2,6 +2,8 @@ import torch
 from torch.utils.data import Dataset
 from tokenizers import Tokenizer
 
+from AttentionAllYouNeed.a_model_manual.masks import causal_mask, padding_mask
+
 
 class BilingualDataset(Dataset):
     """
@@ -102,22 +104,12 @@ class BilingualDataset(Dataset):
             "decoder_input": decoder_input,  # (seq_len)
 
             # encoder_mask: padding only: (1, 1, seq_len),  [[[1, 1, 1, 1, 0, 0]]]
-            "encoder_mask": (encoder_input != self.pad_token).unsqueeze(0).unsqueeze(0).int(),
+            "encoder_mask": padding_mask(encoder_input, self.pad_token),
 
-            # decoder_mask: padding AND causal: (1, seq_len) & (1, seq_len, seq_len),
-            "decoder_mask": (decoder_input != self.pad_token).unsqueeze(0).int() & causal_mask(decoder_input.size(0)),
+            # decoder_mask: padding AND causal: (1, 1, seq_len) & (1, seq_len, seq_len) -> (1, seq_len, seq_len)
+            "decoder_mask": padding_mask(decoder_input, self.pad_token) & causal_mask(decoder_input.size(0)),
             "label": label,                 # (seq_len)
             "src_text": src_text,
             "tgt_text": tgt_text,
         }
-
-
-def causal_mask(size):
-    '''
-    This is crucial in autoregressive models where the prediction of each position should only depend on previous positions.
-    - we dont need PAD tokens to be seen by self-attention mechanism
-    - we dont need every word to see words coming after it in a sentence
-    '''
-    mask = torch.triu(torch.ones((1, size, size)), diagonal=1).type(torch.int)
-    return mask == 0
 

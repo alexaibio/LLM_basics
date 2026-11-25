@@ -25,6 +25,10 @@ uv run python train_manual.py
 uv run pyhton inference_manual.py
 ```
 
+To run a tensorboard:
+```bash
+tensorboard --logdir AttentionAllYouNeed/runs
+```
 
 ## GPT
 Implementation of GPT decoder for text generation.
