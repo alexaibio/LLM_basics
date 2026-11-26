@@ -1,5 +1,6 @@
 import os
 import warnings
+from datetime import datetime
 from typing import Callable
 
 import torch
@@ -44,7 +45,7 @@ def train_model(config):
     #vizualize_model_by_keys(model)
     #print(model)
 
-    writer = SummaryWriter(config['experiment_name'])   # Tensorboard
+    writer = SummaryWriter(f"{config['experiment_name']}_{datetime.now():%Y-%m-%d_%H-%M}")   # Tensorboard: runs/transl_model_2026-11-26_14-30
     optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'], eps=1e-9)
 
     initial_epoch = 0
@@ -196,6 +197,7 @@ def _run_validation(
 if __name__ == '__main__':
     warnings.filterwarnings("ignore")
     config = get_config()
+    config['model_folder'] = f"{config['model_folder']}/manual"     # checkpoints + tokenizers -> model_saved/manual
 
     train_model(config)
 

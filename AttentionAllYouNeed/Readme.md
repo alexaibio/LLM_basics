@@ -150,3 +150,5 @@ Decoding can be done in several ways (see `decode.py`)
  - `greedy_decode()` - a simplest way when next token is just a token with highers probability
  - `beam_search_decode()` - a more complicated method
      
+
+# Option B: with PyTorch primitives

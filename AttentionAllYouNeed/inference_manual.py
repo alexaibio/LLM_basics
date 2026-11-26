@@ -17,6 +17,7 @@ def translate(sentence: str, method: str):
      encode once, then repeat: causal mask, then decode, then argmax, then append, until [EOS] or seq_len
     """
     config = get_config()
+    config['model_folder'] = f"{config['model_folder']}/manual"     # load what train_manual.py saved
     device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
     print(">>> Translate using device:", device)
 

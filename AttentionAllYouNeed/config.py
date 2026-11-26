@@ -16,7 +16,7 @@ def get_config():
         "datasource": 'Helsinki-NLP/opus_books',  # HF now requires 'namespace/name'
         "lang_src": "en",
         "lang_tgt": "ru",
-        "model_folder": "model_saved",   # a_model_manual weights + tokenizers
+        "model_folder": "model_saved",   # weights + tokenizers; each train script adds its own subfolder: manual / pytorch
         "model_basename": "transl_model_",
         "preload": "latest",
         "tokenizer_file": "tokenizer_{0}.json",

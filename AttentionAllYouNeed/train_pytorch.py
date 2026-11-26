@@ -5,6 +5,7 @@
 
 import os
 import warnings
+from datetime import datetime
 
 import torch
 import torch.nn as nn
@@ -13,6 +14,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from AttentionAllYouNeed.b_model_pytorch.model import build_transformer
+from AttentionAllYouNeed.b_model_pytorch.decode import greedy_decode
 from AttentionAllYouNeed.config import get_config, get_model_folder, get_weights_file_path, latest_weights_file_path
 from AttentionAllYouNeed.dataset.build_dataset import get_ds
 from AttentionAllYouNeed.utils import vizualize_model_by_keys
@@ -35,35 +37,6 @@ def causal_mask(size: int, device) -> torch.Tensor:
     return torch.triu(torch.ones(size, size, dtype=torch.bool, device=device), diagonal=1)
 
 
-def greedy_decode(model, source, src_pad_mask, tokenizer_tgt, max_len, device):
-    """
-    for inference (generation) we have to run encoder only once!
-    - compute encoder once, then generate first token by decoder, then add it to decoded input etc
-    - generation stops when we reach EOS or max_length
-    """
-    sos_idx = tokenizer_tgt.token_to_id('[SOS]')
-    eos_idx = tokenizer_tgt.token_to_id('[EOS]')
-
-    # Precompute the encoder output and reuse it for every step
-    encoder_output = model.encode(source, src_pad_mask)
-
-    # Initialize the decoder input with the sos token (1, 1) = batch x first token
-    decoder_input = torch.tensor([[sos_idx]], dtype=source.dtype, device=device)
-
-    while decoder_input.size(1) < max_len:
-        # the generated tokens contain no [PAD], so only the causal mask is needed
-        out = model.decode(encoder_output, src_pad_mask, decoder_input, causal_mask(decoder_input.size(1), device))
-
-        # get next token: highest score at the last position
-        next_word = model.project(out[:, -1]).argmax(dim=-1, keepdim=True)   # (1, 1)
-        decoder_input = torch.cat([decoder_input, next_word], dim=1)
-
-        if next_word.item() == eos_idx:
-            break
-
-    return decoder_input.squeeze(0)   # remove the batch dimension
-
-
 def train_model(config):
 
     # Make sure the weights folder exists
@@ -78,7 +51,7 @@ def train_model(config):
     vizualize_model_by_keys(model)
     print(model)
 
-    writer = SummaryWriter(config['experiment_name'])   # Tensorboard
+    writer = SummaryWriter(f"{config['experiment_name']}_{datetime.now():%Y-%m-%d_%H-%M}")   # Tensorboard: runs/transl_model_pytorch_2026-11-26_14-30
     optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'], eps=1e-9)
 
     initial_epoch = 0
@@ -211,7 +184,7 @@ def _run_validation(
         writer.add_scalar('validation wer', wer, global_step)
 
         # Compute the BLEU metric
-        bleu = torchmetrics.BLEUScore()(predicted, expected)
+        bleu = torchmetrics.BLEUScore()(predicted, [[e] for e in expected])   # BLEU expects a list of references per sentence
         writer.add_scalar('validation BLEU', bleu, global_step)
         writer.flush()
 
@@ -224,6 +197,7 @@ if __name__ == '__main__':
     # layers differently, so a manual checkpoint cannot be loaded into this one (and vice versa).
     # The prefix must not start with the manual one ('transl_model_'), or latest_weights_file_path()
     # of the manual model would pick these files up with its 'transl_model_*' pattern.
+    config['model_folder'] = f"{config['model_folder']}/pytorch"    # checkpoints + tokenizers -> model_saved/pytorch
     config['model_basename'] = 'pytorch_transl_model_'
     config['experiment_name'] = 'runs/transl_model_pytorch'
 
