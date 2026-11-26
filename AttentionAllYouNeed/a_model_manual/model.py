@@ -140,7 +140,7 @@ class Transformer(nn.Module):
         return self.decoder(tgt, encoder_output, src_mask, tgt_mask)
 
     def project(self, x):
-        # x: (batch, seq_len, vocab_size)
+        # (batch, seq_len, d_model) --> (batch, seq_len, vocab_size)
         return self.projection_layer(x)
 
 

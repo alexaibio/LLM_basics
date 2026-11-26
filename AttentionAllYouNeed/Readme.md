@@ -146,7 +146,7 @@ The general way to translate (decode) is as follows
    - NOTE: no KV cache here, на каждом шаге Decoder может заново обрабатывать всю предыдущую последовательность
 
 
-Decoding can be done in several ways
- - `greedy_decode.py` - a simplest way when next token is just a token with highers probability
- - `beam_search.py` - a more complicated method
+Decoding can be done in several ways (see `decode.py`)
+ - `greedy_decode()` - a simplest way when next token is just a token with highers probability
+ - `beam_search_decode()` - a more complicated method
      

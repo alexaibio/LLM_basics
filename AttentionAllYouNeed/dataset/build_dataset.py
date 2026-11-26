@@ -1,9 +1,10 @@
 # Huggingface datasets and tokenizers
 from datasets import load_dataset, load_dataset_builder
 from tokenizers import Tokenizer
-from tokenizers.models import WordLevel
+from tokenizers.decoders import WordPiece as WordPieceDecoder
+from tokenizers.models import BPE, WordLevel
 from tokenizers.pre_tokenizers import Whitespace
-from tokenizers.trainers import WordLevelTrainer
+from tokenizers.trainers import BpeTrainer, WordLevelTrainer
 from torch.utils.data import DataLoader, random_split
 
 from AttentionAllYouNeed.config import get_model_folder
@@ -15,21 +16,34 @@ def _reshaped_dataset_gen(ds, lang):
         yield item['translation'][lang]
 
 
-def _get_or_build_tokenizer(config, ds, lang):
+def _get_or_build_tokenizer(config, ds, lang, tokenizer_type: str = "wordlevel"):
     """
-    Create a WordLevel tokenizer (word=ID) which turns text into a list of integer IDs.
-    Other HF tokenizers: BPE, WordPiece, Unigram
+    Create a tokenizer which turns text into a list of integer IDs.
+      - "wordlevel": one word = one ID, unknown words -> [UNK]
+      - "bpe":       subwords, a rare word is split into known pieces: "Левина" -> "Лев", "##ина"
+    Other HF tokenizers: WordPiece, Unigram
     """
     # saved next to the a_model_manual weights: .../AttentionAllYouNeed/model_saved/tokenizer_{lang}.json
     tokenizer_path = get_model_folder(config) / config['tokenizer_file'].format(lang)
 
     if not tokenizer_path.exists():
-        # the simplest tokenizer = lookup table from word to ID
-        tokenizer = Tokenizer(WordLevel(unk_token="[UNK]"))         # if tokenizer see a word not in vocabulary it substitutes it with UNK
-        tokenizer.pre_tokenizer = Whitespace()                      # split sentence by white space
-
         # [SOS] - start of sentence / [EOS] - end of sentence
-        trainer = WordLevelTrainer(special_tokens=["[UNK]", "[PAD]", "[SOS]", "[EOS]"], min_frequency=2)
+        special_tokens = ["[UNK]", "[PAD]", "[SOS]", "[EOS]"]
+
+        if tokenizer_type == "wordlevel":
+            # the simplest tokenizer = lookup table from word to ID
+            tokenizer = Tokenizer(WordLevel(unk_token="[UNK]"))     # if tokenizer see a word not in vocabulary it substitutes it with UNK
+            trainer = WordLevelTrainer(special_tokens=special_tokens, min_frequency=2)
+        elif tokenizer_type == "bpe":
+            # BPE starts from single characters and merges the most frequent pairs into bigger pieces.
+            # "##" marks a piece that continues a word, the decoder uses it to glue pieces back: "Лев ##ина" -> "Левина"
+            tokenizer = Tokenizer(BPE(unk_token="[UNK]", continuing_subword_prefix="##"))
+            trainer = BpeTrainer(special_tokens=special_tokens, min_frequency=2, continuing_subword_prefix="##")
+            tokenizer.decoder = WordPieceDecoder(prefix="##")
+        else:
+            raise ValueError(f"Unknown tokenizer_type: {tokenizer_type!r}, use 'wordlevel' or 'bpe'")
+
+        tokenizer.pre_tokenizer = Whitespace()                      # split sentence by white space (before WordLevel/BPE)
 
         # The tokenizer splits every sentence, counts each word, drops
         #   the rare ones, and assigns IDs in order of frequency, most common first.
