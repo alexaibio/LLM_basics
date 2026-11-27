@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from AttentionAllYouNeed.config import get_config, get_model_folder, get_weights_file_path, latest_weights_file_path
 from AttentionAllYouNeed.dataset.build_dataset import get_ds
-from AttentionAllYouNeed.a_model_manual.model import build_transformer
+from AttentionAllYouNeed.a_model_manual.model import build_transformer_manual
 from AttentionAllYouNeed.a_model_manual.decode import greedy_decode
 from AttentionAllYouNeed.utils import vizualize_model_by_keys
 
@@ -40,7 +40,7 @@ def train_model(config):
 
     # transform text corpus into datasets with Encoder_input, decoder_input tensors
     train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt = get_ds(config)
-    model = build_transformer(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)
+    model = build_transformer_manual(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)
 
     #vizualize_model_by_keys(model)
     #print(model)
@@ -79,11 +79,11 @@ def train_model(config):
             encoder_input = batch['encoder_input'].to(device)       # (b, seq_len)
             decoder_input = batch['decoder_input'].to(device)       # (B, seq_len)
             encoder_mask = batch['encoder_mask'].to(device)         # (B, 1, 1, seq_len)
-            decoder_mask = batch['decoder_mask'].to(device)         # (B, 1, seq_len, seq_len)
+            decoder_mask_combined = batch['decoder_mask_combined'].to(device)   # (B, 1, seq_len, seq_len), padding & causal
 
             # FORWARD pass (manual): run the tensors through the encoder, decoder and the projection layer
             encoder_output = model.encode(encoder_input, encoder_mask)              # (B, seq_len, d_model)
-            decoder_output = model.decode(encoder_output, encoder_mask, decoder_input, decoder_mask) # (B, seq_len, d_model)
+            decoder_output = model.decode(encoder_output, encoder_mask, decoder_input, decoder_mask_combined) # (B, seq_len, d_model)
             proj_output = model.project(decoder_output)                             # (B, seq_len, vocab_size)
 
             # Compute the loss

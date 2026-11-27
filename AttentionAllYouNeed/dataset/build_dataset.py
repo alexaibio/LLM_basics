@@ -63,7 +63,7 @@ def get_ds(config):
       decoder_input  [ 2,  73,  628,  1,  1,  1]   [SOS] Анна Каренина [PAD] [PAD] [PAD] - только начало перевода (рус) - поэтому нет EOS
       label          [73, 628,    3,  1,  1,  1]   Анна Каренина [EOS] [PAD] [PAD] [PAD] - нет SOS - ответ, с которым сравнивается предсказание
       encoder_mask   (1, 1, 6)  [1, 1, 1, 1, 0, 0] - запрещает Encoder обращать внимание на PAD.
-      decoder_mask   (1, 6, 6)  - запрещает Decoder смотреть на PAD и будущие токены.
+      decoder_mask_combined (1, 6, 6)  - padding & causal: запрещает Decoder смотреть на PAD и будущие токены.
       src_text, tgt_text        raw strings, used for printing and BLEU at validation
 
     """

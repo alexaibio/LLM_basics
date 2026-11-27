@@ -150,5 +150,16 @@ Decoding can be done in several ways (see `decode.py`)
  - `greedy_decode()` - a simplest way when next token is just a token with highers probability
  - `beam_search_decode()` - a more complicated method
      
+run `translate(sentence: str, method: str)` to start translation/decoding
+
 
 # Option B: with PyTorch primitives
+
+Here is how pytorch makes it easier:
+Decoding:
+- masks are different
+    - manual: 1 = attend, 0 = blocked :: (1, 1, seq_len) , Consumed by attention()
+    - pytorch: True = blocked ([PAD]), False = attend :: (1, seq_len) = (B, S), consumed by nn.MultiheadAttention(key_padding_mask=...)
+    - 
+    - 
+       

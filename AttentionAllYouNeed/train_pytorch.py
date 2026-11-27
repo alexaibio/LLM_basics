@@ -13,8 +13,9 @@ import torchmetrics
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from AttentionAllYouNeed.b_model_pytorch.model import build_transformer
+from AttentionAllYouNeed.b_model_pytorch.model import build_transformer_pytorch
 from AttentionAllYouNeed.b_model_pytorch.decode import greedy_decode
+from AttentionAllYouNeed.b_model_pytorch.masks import causal_mask, padding_mask
 from AttentionAllYouNeed.config import get_config, get_model_folder, get_weights_file_path, latest_weights_file_path
 from AttentionAllYouNeed.dataset.build_dataset import get_ds
 from AttentionAllYouNeed.utils import vizualize_model_by_keys
@@ -26,17 +27,6 @@ print("Using device:", device)
 device = torch.device(device)
 
 
-def padding_mask(tokens: torch.Tensor, pad_idx: int) -> torch.Tensor:
-    # (B, S) token ids --> (B, S) bool, True = [PAD] (attention ignores these keys)
-    return tokens == pad_idx
-
-
-def causal_mask(size: int, device) -> torch.Tensor:
-    # (L, L) bool, True above the diagonal = future positions (blocked)
-    # same as manual causal_mask, but inverted: there 1 = allowed
-    return torch.triu(torch.ones(size, size, dtype=torch.bool, device=device), diagonal=1)
-
-
 def train_model(config):
 
     # Make sure the weights folder exists
@@ -44,7 +34,7 @@ def train_model(config):
 
     # transform text corpus into datasets with encoder_input, decoder_input tensors
     train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt = get_ds(config)
-    model = build_transformer(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)
+    model = build_transformer_pytorch(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)
     src_pad_idx = tokenizer_src.token_to_id('[PAD]')
     tgt_pad_idx = tokenizer_tgt.token_to_id('[PAD]')
 
@@ -83,7 +73,7 @@ def train_model(config):
             encoder_input = batch['encoder_input'].to(device)       # (B, seq_len)
             decoder_input = batch['decoder_input'].to(device)       # (B, seq_len)
 
-            # masks in PyTorch convention (the dataset's encoder_mask / decoder_mask are not used)
+            # masks in PyTorch convention (the dataset's encoder_mask / decoder_mask_combined are not used)
             src_pad_mask = padding_mask(encoder_input, src_pad_idx)   # (B, seq_len)
             tgt_pad_mask = padding_mask(decoder_input, tgt_pad_idx)   # (B, seq_len)
             tgt_mask = causal_mask(decoder_input.size(1), device)     # (seq_len, seq_len)

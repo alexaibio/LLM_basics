@@ -7,7 +7,7 @@ from tokenizers import Tokenizer
 from AttentionAllYouNeed.config import get_config, get_model_folder, latest_weights_file_path
 from AttentionAllYouNeed.dataset.dataset import BilingualDataset
 from AttentionAllYouNeed.a_model_manual.masks import padding_mask
-from AttentionAllYouNeed.a_model_manual.model import build_transformer
+from AttentionAllYouNeed.a_model_manual.model import build_transformer_manual
 from AttentionAllYouNeed.a_model_manual.decode import greedy_decode, beam_search_decode
 
 
@@ -24,7 +24,7 @@ def translate(sentence: str, method: str):
     # tokenizers are saved next to the a_model_manual weights: .../AttentionAllYouNeed/model_saved/tokenizer_{lang}.json
     tokenizer_src = Tokenizer.from_file(str(get_model_folder(config) / config['tokenizer_file'].format(config['lang_src'])))
     tokenizer_tgt = Tokenizer.from_file(str(get_model_folder(config) / config['tokenizer_file'].format(config['lang_tgt'])))
-    model = build_transformer(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)
+    model = build_transformer_manual(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)
 
     # Load the pretrained weights
     model_filename = latest_weights_file_path(config)

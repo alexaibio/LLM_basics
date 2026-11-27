@@ -1,7 +1,7 @@
 """
-Inference for both models with shared helpers.
-    translate_manual()  - a_model_manual  (greedy or beam search)
-    translate_pytorch() - b_model_pytorch (greedy)
+Inference (decoding):
+    - translate_manual()  - a_model_manual  (greedy or beam search)
+    - translate_pytorch() - b_model_pytorch (greedy)
 
 Run from the repo root:
     uv run python -m AttentionAllYouNeed.inference
@@ -77,7 +77,7 @@ def print_header(title: str, sentence: str, label: str) -> None:
 ################################################
 
 def translate_manual(sentence: str | int, method: str = "greedy") -> str:
-    from AttentionAllYouNeed.a_model_manual.model import build_transformer
+    from AttentionAllYouNeed.a_model_manual.model import build_transformer_manual
     from AttentionAllYouNeed.a_model_manual.masks import padding_mask
     from AttentionAllYouNeed.a_model_manual.decode import greedy_decode, beam_search_decode
 
@@ -86,13 +86,14 @@ def translate_manual(sentence: str | int, method: str = "greedy") -> str:
     device = get_device()
 
     tokenizer_src, tokenizer_tgt = load_tokenizers(config)
-    model = build_transformer(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)
+    model = build_transformer_manual(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)
     load_checkpoint(model, config, device)
 
+    # DECODING loop
     sentence, label = get_sentence(sentence, config)
     with torch.no_grad():
-        source = prepare_source(sentence, tokenizer_src, config['seq_len'], device)                 # (1, seq_len)
-        source_mask = padding_mask(source[0], tokenizer_src.token_to_id('[PAD]'))                     # (1, 1, seq_len), 1 = allowed
+        source = prepare_source(sentence, tokenizer_src, config['seq_len'], device)    # (1, seq_len)
+        source_mask = padding_mask(source[0], tokenizer_src.token_to_id('[PAD]'))      # (1, 1, seq_len), 1 = allowed
 
         print_header(f"manual, {method}", sentence, label)
         if method == "greedy":
@@ -107,10 +108,10 @@ def translate_manual(sentence: str | int, method: str = "greedy") -> str:
     return tokenizer_tgt.decode(model_out.tolist())
 
 
-def translate_pytorch(sentence: str | int) -> str:                  # different from manual: no method, greedy only
-    from AttentionAllYouNeed.b_model_pytorch.model import build_transformer     # different from manual: b_model_pytorch
+def translate_pytorch(sentence: str | int) -> str:
+    from AttentionAllYouNeed.b_model_pytorch.model import build_transformer_pytorch     # different from manual: b_model_pytorch
     from AttentionAllYouNeed.b_model_pytorch.decode import greedy_decode        # different from manual: b_model_pytorch, no beam search
-    # different from manual: no masks import, the padding mask is built inline below
+    from AttentionAllYouNeed.b_model_pytorch.masks import padding_mask          # different from manual: b_model_pytorch, True = [PAD]
 
     config = get_config()
     config['model_folder'] = f"{config['model_folder']}/pytorch"    # different from manual: same as train_pytorch.py
@@ -118,13 +119,19 @@ def translate_pytorch(sentence: str | int) -> str:                  # different 
     device = get_device()
 
     tokenizer_src, tokenizer_tgt = load_tokenizers(config)
-    model = build_transformer(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)
+    model = build_transformer_pytorch(config, tokenizer_src.get_vocab_size(), tokenizer_tgt.get_vocab_size()).to(device)
     load_checkpoint(model, config, device)
 
+    # DECODING Loop
     sentence, label = get_sentence(sentence, config)
     with torch.no_grad():
         source = prepare_source(sentence, tokenizer_src, config['seq_len'], device)                 # (1, seq_len)
-        src_pad_mask = source == tokenizer_src.token_to_id('[PAD]')                                   # different from manual: (1, seq_len), True = [PAD]
+
+        # set TRUE to positions with numbers correspondent to PAD
+        # Note that masking is different in manual and pytorch implementatio
+        #  - manual: 1 = attend, 0 = blocked, (1, 1, seq_len)
+        #  - pytorch: True = blocked ([PAD]), False = attend, (1, seq_len) = (B, S)
+        src_pad_mask = padding_mask(source, tokenizer_src.token_to_id('[PAD]'))                       # different from manual: (1, seq_len), True = [PAD]
 
         print_header("pytorch, greedy", sentence, label)                                              # different from manual: title
         model_out = greedy_decode(model, source, src_pad_mask, tokenizer_tgt, config['seq_len'], device)   # different from manual: PyTorch mask, no verbose

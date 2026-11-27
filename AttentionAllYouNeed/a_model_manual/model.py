@@ -148,7 +148,7 @@ class Transformer(nn.Module):
 
 ##################################################################
 
-def build_transformer(config: dict, src_vocab_size: int, tgt_vocab_size: int) -> Transformer:
+def build_transformer_manual(config: dict, src_vocab_size: int, tgt_vocab_size: int) -> Transformer:
 
     # Hyperparameters come from config.py; vocab sizes come from the trained tokenizers
     src_seq_len = tgt_seq_len = config['seq_len']

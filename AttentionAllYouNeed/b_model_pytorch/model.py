@@ -131,7 +131,7 @@ class Transformer(nn.Module):
 
 ##################################################################
 
-def build_transformer(config: dict, src_vocab_size: int, tgt_vocab_size: int) -> Transformer:
+def build_transformer_pytorch(config: dict, src_vocab_size: int, tgt_vocab_size: int) -> Transformer:
     transformer = Transformer(config, src_vocab_size, tgt_vocab_size)
 
     # Initialize the parameters (same as manual).

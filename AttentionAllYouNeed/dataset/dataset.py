@@ -23,7 +23,7 @@ class BilingualDataset(Dataset):
       decoder_input  [ 2,  73,  628,  1,  1,  1]   [SOS] Анна Каренина [PAD] [PAD] [PAD] - только начало перевода (рус) - поэтому нет EOS
       label          [73, 628,    3,  1,  1,  1]   Анна Каренина [EOS] [PAD] [PAD] [PAD] - нет SOS - ответ, с которым сравнивается предсказание
       encoder_mask   (1, 1, 6)  [1, 1, 1, 1, 0, 0] - запрещает Encoder обращать внимание на PAD.
-      decoder_mask   (1, 6, 6)  - запрещает Decoder смотреть на PAD и будущие токены.
+      decoder_mask_combined (1, 6, 6)  - padding & causal: запрещает Decoder смотреть на PAD и будущие токены.
       src_text, tgt_text        raw strings, used for printing and BLEU at validation
 
     Special tokens
@@ -106,8 +106,8 @@ class BilingualDataset(Dataset):
             # encoder_mask: padding only: (1, 1, seq_len),  [[[1, 1, 1, 1, 0, 0]]]
             "encoder_mask": padding_mask(encoder_input, self.pad_token),
 
-            # decoder_mask: padding AND causal: (1, 1, seq_len) & (1, seq_len, seq_len) -> (1, seq_len, seq_len)
-            "decoder_mask": padding_mask(decoder_input, self.pad_token) & causal_mask(decoder_input.size(0)),
+            # decoder_mask_combined: padding AND causal: (1, 1, seq_len) & (1, seq_len, seq_len) -> (1, seq_len, seq_len)
+            "decoder_mask_combined": padding_mask(decoder_input, self.pad_token) & causal_mask(decoder_input.size(0), decoder_input.device),
             "label": label,                 # (seq_len)
             "src_text": src_text,
             "tgt_text": tgt_text,
